@@ -1,0 +1,1878 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>NERVA — Decision layer for agentic commerce</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07070A;
+    --bg-1: #0B0B0F;
+    --bg-2: #101015;
+    --bg-3: #15151B;
+    --line: #1E1E25;
+    --line-2: #2A2A33;
+    --ink: #ECECEE;
+    --ink-2: #A8A8B0;
+    --ink-3: #6E6E78;
+    --ink-4: #4A4A52;
+
+    --commit: #34D399;     /* emerald */
+    --hold:   #FBBF24;     /* amber */
+    --wait:   #60A5FA;     /* blue */
+    --consult:#C084FC;     /* violet */
+    --toxic:  #F87171;     /* red */
+
+    --commit-bg: rgba(52,211,153,.08);
+    --hold-bg:   rgba(251,191,36,.08);
+    --wait-bg:   rgba(96,165,250,.08);
+    --consult-bg:rgba(192,132,252,.08);
+    --toxic-bg:  rgba(248,113,113,.08);
+
+    --radius: 14px;
+    --shell-max: 1240px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-feature-settings: "ss01","cv11";
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  /* Subtle radial backdrop */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(900px 600px at 80% -10%, rgba(120,90,200,.10), transparent 60%),
+      radial-gradient(900px 600px at -10% 30%, rgba(80,180,140,.06), transparent 60%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: "Geist Mono", ui-monospace, "JetBrains Mono", Menlo, monospace; }
+  .serif { font-family: "Instrument Serif", "Times New Roman", serif; font-weight: 400; letter-spacing: -0.01em; }
+  .italic { font-style: italic; }
+
+  /* ============ HEADER ============ */
+  header.nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    background: rgba(7,7,10,0.72);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner {
+    max-width: var(--shell-max);
+    margin: 0 auto;
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 24px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13.5px; font-weight: 500; letter-spacing: -0.005em;
+  }
+  .brand-mark {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: linear-gradient(135deg, #fff, #B7B7BD 60%, #6E6E78);
+    display: grid; place-items: center;
+    color: #0B0B0F; font-weight: 700; font-size: 12px;
+  }
+  .brand small { color: var(--ink-3); font-weight: 400; margin-left: 6px; }
+  .nav-links {
+    display: flex; gap: 4px; align-items: center;
+  }
+  .nav-links a {
+    font-size: 12.5px; color: var(--ink-2);
+    padding: 8px 12px; border-radius: 999px;
+    transition: color .15s ease, background .15s ease;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .nav-links a:hover { color: var(--ink); background: var(--bg-2); }
+  .nav-links a .num {
+    font-family: "Geist Mono", monospace; font-size: 10.5px;
+    color: var(--ink-4);
+  }
+  .nav-cta {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 10px; font-size: 11px; color: var(--ink-2);
+    font-family: "Geist Mono", monospace;
+    background: var(--bg-1);
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--commit); box-shadow: 0 0 8px var(--commit); }
+  .btn {
+    border: 1px solid var(--line-2); background: var(--ink);
+    color: #0B0B0F; padding: 8px 14px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 500; cursor: pointer;
+    transition: transform .15s, background .15s;
+  }
+  .btn:hover { background: #fff; }
+  .btn-ghost { background: transparent; color: var(--ink); }
+  .btn-ghost:hover { background: var(--bg-2); }
+
+  /* ============ SHELL ============ */
+  main { position: relative; z-index: 1; }
+  .shell { max-width: var(--shell-max); margin: 0 auto; padding: 0 28px; }
+
+  .sheet { padding: 96px 0 64px; border-bottom: 1px solid var(--line); position: relative; }
+  .sheet:last-of-type { border-bottom: none; }
+  .sheet-tag {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--ink-3); font-family: "Geist Mono", monospace;
+    font-size: 11.5px; letter-spacing: 0.05em; text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .sheet-tag .num {
+    display: inline-grid; place-items: center;
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    color: var(--ink); font-size: 11px;
+  }
+  .sheet-tag .line {
+    flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent);
+  }
+
+  /* ============ HERO ============ */
+  .hero {
+    padding: 80px 0 32px;
+    position: relative;
+  }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: "Geist Mono", monospace; font-size: 11.5px;
+    color: var(--ink-2);
+    padding: 6px 12px; border: 1px solid var(--line);
+    border-radius: 999px; background: var(--bg-1);
+    margin-bottom: 28px;
+  }
+  .eyebrow .star {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ink);
+  }
+  .hero h1 {
+    margin: 0;
+    font-family: "Geist", sans-serif;
+    font-weight: 500;
+    font-size: clamp(40px, 6.8vw, 86px);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    color: var(--ink);
+    max-width: 1100px;
+  }
+  .hero h1 .serif-em {
+    font-family: "Instrument Serif", serif;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .hero h1 .muted { color: var(--ink-3); }
+  .hero-sub {
+    margin-top: 28px;
+    max-width: 720px;
+    color: var(--ink-2);
+    font-size: 18px;
+    line-height: 1.55;
+    letter-spacing: -0.005em;
+  }
+  .hero-cta {
+    margin-top: 36px;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .hero-meta {
+    margin-top: 56px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .hero-meta > div {
+    padding: 20px 24px 22px;
+    border-right: 1px solid var(--line);
+  }
+  .hero-meta > div:last-child { border-right: none; }
+  .hero-meta .k { font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .hero-meta .v { font-size: 22px; margin-top: 8px; letter-spacing: -0.02em; }
+  .hero-meta .v small { color: var(--ink-3); font-size: 12.5px; margin-left: 6px; font-family: "Geist Mono", monospace; }
+
+  /* ============ SHEET 1 — THE GAP & FRAMEWORK ============ */
+  .section-head {
+    display: grid; grid-template-columns: 1.1fr 1.4fr; gap: 56px;
+    margin-bottom: 48px; align-items: end;
+  }
+  .section-head h2 {
+    font-family: "Geist", sans-serif;
+    font-size: clamp(32px, 4.2vw, 52px);
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    margin: 0;
+  }
+  .section-head h2 .serif-em { font-family: "Instrument Serif", serif; font-style: italic; font-weight: 400; }
+  .section-head p {
+    color: var(--ink-2);
+    font-size: 16px;
+    margin: 0;
+    line-height: 1.55;
+    max-width: 540px;
+  }
+
+  .three-col {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--bg-1);
+    overflow: hidden;
+  }
+  .gap-card {
+    padding: 28px 28px 32px;
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 14px;
+    position: relative;
+  }
+  .gap-card:last-child { border-right: none; }
+  .gap-card .label {
+    font-family: "Geist Mono", monospace; font-size: 11px;
+    color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .gap-card .label .ind {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .gap-card h3 {
+    margin: 0; font-size: 22px; font-weight: 500;
+    letter-spacing: -0.02em; line-height: 1.15;
+  }
+  .gap-card p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
+  .gap-card .stat {
+    margin-top: 12px;
+    border-top: 1px dashed var(--line);
+    padding-top: 14px;
+    font-family: "Geist Mono", monospace; font-size: 11.5px; color: var(--ink-3);
+  }
+  .gap-card .stat b { color: var(--ink); font-weight: 500; }
+
+  /* Framework */
+  .framework-head {
+    display: grid; grid-template-columns: 1fr auto; gap: 24px;
+    align-items: end; margin-top: 88px; margin-bottom: 28px;
+  }
+  .framework-head .meta {
+    font-family: "Geist Mono", monospace; font-size: 11px;
+    color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .states {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;
+  }
+  .state {
+    border: 1px solid var(--line);
+    background: var(--bg-1);
+    border-radius: 16px;
+    padding: 22px 20px 22px;
+    position: relative;
+    overflow: hidden;
+    min-height: 240px;
+    display: flex; flex-direction: column; gap: 14px;
+    transition: transform .25s ease, border-color .25s ease;
+  }
+  .state:hover { transform: translateY(-2px); border-color: var(--line-2); }
+  .state::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--c, var(--ink-4));
+  }
+  .state .glyph {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--cbg, var(--bg-2));
+    border: 1px solid var(--line);
+    display: grid; place-items: center;
+    color: var(--c, var(--ink));
+  }
+  .state .name {
+    font-family: "Geist Mono", monospace;
+    font-size: 11px;
+    color: var(--c, var(--ink));
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .state .h {
+    font-size: 18px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.2;
+    margin: 0;
+  }
+  .state .d {
+    font-size: 13px; color: var(--ink-2); margin: 0; line-height: 1.5;
+  }
+  .state .signal {
+    margin-top: auto; padding-top: 12px;
+    border-top: 1px solid var(--line);
+    font-family: "Geist Mono", monospace; font-size: 10.5px;
+    color: var(--ink-3);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .state .signal b { color: var(--c, var(--ink)); font-weight: 500; }
+
+  .state.commit  { --c: var(--commit);  --cbg: var(--commit-bg); }
+  .state.hold    { --c: var(--hold);    --cbg: var(--hold-bg); }
+  .state.wait    { --c: var(--wait);    --cbg: var(--wait-bg); }
+  .state.consult { --c: var(--consult); --cbg: var(--consult-bg); }
+  .state.toxic   { --c: var(--toxic);   --cbg: var(--toxic-bg); }
+
+  /* Kernel diagram */
+  .kernel {
+    margin-top: 56px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    background: var(--bg-1);
+  }
+  .kernel-left {
+    padding: 32px 32px 36px;
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .kernel-left h3 {
+    font-size: 22px; margin: 0; letter-spacing: -0.02em; font-weight: 500;
+  }
+  .kernel-inputs { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+  .input-row {
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; background: var(--bg-2);
+    display: grid; grid-template-columns: 110px 1fr 80px; gap: 14px; align-items: center;
+  }
+  .input-row .lab { font-family: "Geist Mono", monospace; font-size: 11.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.08em; }
+  .input-row .bar { height: 6px; background: var(--bg-3); border-radius: 999px; overflow: hidden; position: relative; }
+  .input-row .bar > i {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--ink-3), var(--ink));
+    border-radius: 999px;
+  }
+  .input-row .val { font-family: "Geist Mono", monospace; font-size: 12px; color: var(--ink); text-align: right; }
+  .kernel-right {
+    padding: 32px 32px 36px;
+    display: flex; flex-direction: column; gap: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  }
+  .kernel-right h3 {
+    font-size: 16px; margin: 0; color: var(--ink-2); font-weight: 500;
+    font-family: "Geist Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .one-way {
+    border: 1px solid var(--toxic); border-color: rgba(248,113,113,.4);
+    background: var(--toxic-bg);
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: flex; gap: 14px;
+  }
+  .one-way .icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: rgba(248,113,113,.15); color: var(--toxic);
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .one-way .body strong { display: block; font-weight: 500; }
+  .one-way .body p { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; }
+
+  .lift-card {
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px;
+    background: var(--bg-2);
+  }
+  .lift-card .head { display: flex; justify-content: space-between; align-items: baseline; }
+  .lift-card .head .t { font-family: "Geist Mono", monospace; font-size: 11.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.08em; }
+  .lift-card .head .v { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+  .lift-card .head .v span { color: var(--commit); font-size: 13px; margin-left: 6px; font-family: "Geist Mono", monospace; }
+  .lift-card .chart {
+    margin-top: 14px;
+    height: 60px;
+    display: flex; align-items: flex-end; gap: 4px;
+  }
+  .lift-card .chart i {
+    flex: 1; background: var(--bg-3); border-radius: 3px;
+  }
+  .lift-card .chart i.up { background: linear-gradient(180deg, var(--commit), rgba(52,211,153,.3)); }
+  .lift-card .chart i.dn { background: var(--bg-3); }
+
+  /* ============ SHEET 2 — TWO SCENARIOS ============ */
+  .tabs {
+    display: flex; gap: 6px;
+    border: 1px solid var(--line);
+    background: var(--bg-1);
+    padding: 5px;
+    border-radius: 999px;
+    width: fit-content;
+    margin-bottom: 36px;
+  }
+  .tabs button {
+    border: none; background: transparent; color: var(--ink-2);
+    padding: 8px 18px; border-radius: 999px;
+    font-family: "Geist", sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .18s ease;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .tabs button .tab-tag { font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-4); }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button.active { background: var(--ink); color: #0B0B0F; }
+  .tabs button.active .tab-tag { color: rgba(11,11,15,0.5); }
+
+  .scenario {
+    display: grid; grid-template-columns: 0.95fr 1.4fr; gap: 36px;
+    align-items: stretch;
+  }
+  .scenario-side h3 {
+    font-family: "Geist", sans-serif;
+    font-size: clamp(26px, 3vw, 38px);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    margin: 0 0 14px;
+  }
+  .scenario-side h3 .serif-em { font-family: "Instrument Serif", serif; font-style: italic; font-weight: 400; }
+  .scenario-side .lede {
+    color: var(--ink-2); font-size: 15.5px; line-height: 1.6; margin: 0 0 24px;
+  }
+  .who {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-bottom: 24px;
+  }
+  .who > div {
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 14px 14px;
+    background: var(--bg-1);
+  }
+  .who .k { font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .who .v { font-size: 14px; margin-top: 6px; color: var(--ink); line-height: 1.4; }
+
+  .scenario-side .features {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .scenario-side .features li {
+    display: grid; grid-template-columns: 22px 1fr; gap: 12px;
+    font-size: 14px; color: var(--ink-2); line-height: 1.5;
+  }
+  .scenario-side .features li .check {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--commit-bg); color: var(--commit);
+    display: grid; place-items: center;
+    margin-top: 3px;
+  }
+  .scenario-side .features li b { color: var(--ink); font-weight: 500; }
+
+  /* Mock UI shells */
+  .mock {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--bg-1);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: 0 30px 80px -40px rgba(0,0,0,.6), 0 2px 0 rgba(255,255,255,0.02) inset;
+  }
+  .mock-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent);
+  }
+  .mock-bar .dots { display: flex; gap: 6px; }
+  .mock-bar .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--bg-3); }
+  .mock-bar .url {
+    flex: 1; font-family: "Geist Mono", monospace; font-size: 11px;
+    color: var(--ink-3); text-align: center;
+    background: var(--bg-2); border-radius: 6px; padding: 4px 8px;
+    border: 1px solid var(--line);
+  }
+  .mock-bar .ctrls {
+    display: flex; gap: 6px;
+    font-family: "Geist Mono", monospace; font-size: 11px; color: var(--ink-3);
+  }
+  .mock-body { padding: 22px; flex: 1; }
+
+  /* Operator mock */
+  .op-grid {
+    display: grid; grid-template-columns: 200px 1fr; gap: 0;
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    background: var(--bg-2);
+    min-height: 460px;
+  }
+  .op-side {
+    border-right: 1px solid var(--line);
+    background: var(--bg-1);
+    padding: 16px 12px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .op-side .lbl {
+    padding: 6px 10px; font-family: "Geist Mono", monospace; font-size: 10.5px;
+    color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em;
+    margin-top: 6px;
+  }
+  .op-side .item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; border-radius: 8px;
+    font-size: 12.5px; color: var(--ink-2); cursor: default;
+  }
+  .op-side .item.active { background: var(--bg-3); color: var(--ink); }
+  .op-side .item .badge {
+    font-family: "Geist Mono", monospace; font-size: 9.5px;
+    padding: 2px 6px; border-radius: 999px;
+    background: var(--bg-3); color: var(--ink-3);
+  }
+  .op-side .item .badge.hold { color: var(--hold); background: var(--hold-bg); }
+  .op-side .item .badge.tox { color: var(--toxic); background: var(--toxic-bg); }
+  .op-side .item .badge.con { color: var(--consult); background: var(--consult-bg); }
+  .op-side .item .badge.com { color: var(--commit); background: var(--commit-bg); }
+
+  .op-main { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .op-title { display: flex; align-items: center; gap: 10px; }
+  .op-title .h { font-size: 16px; font-weight: 500; letter-spacing: -0.015em; }
+  .op-title .ts { font-family: "Geist Mono", monospace; font-size: 11px; color: var(--ink-3); margin-left: auto; }
+  .state-banner {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid rgba(251,191,36,0.4);
+    background: var(--hold-bg);
+    border-radius: 10px;
+  }
+  .state-banner.toxic { border-color: rgba(248,113,113,0.4); background: var(--toxic-bg); }
+  .state-banner.commit { border-color: rgba(52,211,153,0.4); background: var(--commit-bg); }
+  .state-banner .glyph {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(0,0,0,0.25);
+    display: grid; place-items: center;
+    color: var(--hold);
+  }
+  .state-banner.toxic .glyph { color: var(--toxic); }
+  .state-banner.commit .glyph { color: var(--commit); }
+  .state-banner .text { line-height: 1.4; }
+  .state-banner .text .l1 { font-family: "Geist Mono", monospace; font-size: 11.5px; color: var(--hold); letter-spacing: 0.1em; text-transform: uppercase; }
+  .state-banner.toxic .text .l1 { color: var(--toxic); }
+  .state-banner.commit .text .l1 { color: var(--commit); }
+  .state-banner .text .l2 { font-size: 13.5px; color: var(--ink); margin-top: 2px; }
+
+  .metric-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .metric-grid .cell {
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--bg-1);
+  }
+  .metric-grid .cell .k { font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .metric-grid .cell .v { font-size: 18px; margin-top: 6px; letter-spacing: -0.02em; }
+  .metric-grid .cell .v span { font-size: 12px; color: var(--ink-3); font-family: "Geist Mono", monospace; margin-left: 4px; }
+  .metric-grid .cell .bar {
+    margin-top: 8px; height: 4px; background: var(--bg-3); border-radius: 999px; overflow: hidden;
+  }
+  .metric-grid .cell .bar > i {
+    display: block; height: 100%; background: var(--ink); border-radius: 999px;
+  }
+  .metric-grid .cell .bar > i.hold { background: var(--hold); }
+  .metric-grid .cell .bar > i.commit { background: var(--commit); }
+  .metric-grid .cell .bar > i.consult { background: var(--consult); }
+
+  .gap-callout {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--bg-3);
+    font-size: 13px; color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .gap-callout b { color: var(--ink); font-weight: 500; }
+  .actions {
+    display: flex; gap: 8px; margin-top: 4px;
+  }
+  .actions button {
+    flex: 1; border: 1px solid var(--line); background: var(--bg-2);
+    color: var(--ink-2); font-family: "Geist Mono", monospace; font-size: 11px;
+    padding: 9px 0; border-radius: 8px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    cursor: default;
+  }
+  .actions button.primary {
+    background: var(--ink); color: #0B0B0F; border-color: var(--ink);
+  }
+  .actions button.danger {
+    background: transparent; color: var(--toxic); border-color: rgba(248,113,113,0.3);
+  }
+
+  /* Customer mock — phone or chat panel */
+  .cx-grid {
+    display: grid; grid-template-columns: 1fr 0.85fr; gap: 14px;
+    min-height: 460px;
+  }
+  .chat {
+    border: 1px solid var(--line); border-radius: 12px;
+    background: var(--bg-2);
+    padding: 14px 14px 14px;
+    display: flex; flex-direction: column; gap: 10px;
+    overflow: hidden;
+  }
+  .chat-head {
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--line);
+  }
+  .chat-head .avatar {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #C084FC, #60A5FA);
+    color: #0B0B0F; display: grid; place-items: center;
+    font-weight: 600; font-size: 12px;
+  }
+  .chat-head .name { font-size: 13px; font-weight: 500; }
+  .chat-head .sub { font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3); }
+  .chat-head .right { margin-left: auto; font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3); }
+  .msgs { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-right: 4px; }
+  .msg {
+    max-width: 90%;
+    padding: 10px 13px; border-radius: 12px;
+    font-size: 13px; line-height: 1.5; color: var(--ink);
+  }
+  .msg.them { background: var(--bg-3); border-bottom-left-radius: 4px; }
+  .msg.you { background: var(--ink); color: #0B0B0F; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg .pname { font-family: "Geist Mono", monospace; font-size: 10px; color: var(--ink-3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .msg.you .pname { color: rgba(11,11,15,0.5); }
+
+  .product-row {
+    display: grid; grid-template-columns: 56px 1fr auto; gap: 10px;
+    align-items: center;
+    background: var(--bg-1); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px;
+    margin-top: 8px;
+  }
+  .product-row .img {
+    width: 56px; height: 56px; border-radius: 6px;
+    background: linear-gradient(135deg, #1F1F25, #15151B);
+    border: 1px solid var(--line);
+    display: grid; place-items: center;
+    font-family: "Instrument Serif", serif; font-style: italic;
+    color: var(--ink-3); font-size: 22px;
+  }
+  .product-row .pn { font-size: 13px; font-weight: 500; line-height: 1.3; }
+  .product-row .pm { font-family: "Geist Mono", monospace; font-size: 11px; color: var(--ink-3); }
+  .product-row .price { font-family: "Geist Mono", monospace; font-size: 12.5px; color: var(--ink); }
+
+  .chat-input {
+    margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chat-input .field {
+    flex: 1; background: var(--bg-3); border-radius: 999px;
+    padding: 9px 14px; font-size: 12.5px; color: var(--ink-3);
+    font-family: "Geist Mono", monospace;
+  }
+  .chat-input .send {
+    width: 32px; height: 32px; border-radius: 999px;
+    background: var(--ink); color: #0B0B0F; display: grid; place-items: center;
+  }
+
+  /* NERVA panel beside chat */
+  .nerva-panel {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg-2);
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 12px; border-bottom: 1px solid var(--line);
+  }
+  .panel-head .t {
+    font-family: "Geist Mono", monospace; font-size: 10.5px;
+    color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.12em;
+  }
+  .panel-head .by {
+    font-family: "Geist Mono", monospace; font-size: 10px;
+    color: var(--ink-4);
+  }
+  .panel-state {
+    text-align: center; padding: 14px 0 10px;
+  }
+  .panel-state .ring {
+    width: 88px; height: 88px; margin: 0 auto;
+    border-radius: 50%;
+    background: conic-gradient(var(--hold) 0 65%, var(--bg-3) 65% 100%);
+    display: grid; place-items: center;
+    position: relative;
+  }
+  .panel-state .ring::before {
+    content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--bg-2);
+  }
+  .panel-state .ring .v {
+    position: relative; font-family: "Geist Mono", monospace;
+    font-size: 12px; color: var(--hold); letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+  .panel-state .label {
+    margin-top: 10px; font-size: 16px; letter-spacing: -0.02em; font-weight: 500;
+  }
+  .panel-state .sub {
+    font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3);
+    margin-top: 2px;
+  }
+  .panel-meta { display: flex; flex-direction: column; gap: 10px; }
+  .panel-row {
+    display: grid; grid-template-columns: 100px 1fr 56px; gap: 10px; align-items: center;
+    font-size: 12px; color: var(--ink-2);
+  }
+  .panel-row .k { font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .panel-row .bar { height: 4px; background: var(--bg-3); border-radius: 999px; overflow: hidden; }
+  .panel-row .bar > i { display: block; height: 100%; background: var(--ink); border-radius: 999px; }
+  .panel-row .bar > i.hi { background: var(--hold); }
+  .panel-row .bar > i.lo { background: var(--commit); }
+  .panel-row .v { text-align: right; font-family: "Geist Mono", monospace; color: var(--ink); }
+
+  .panel-cta {
+    background: var(--bg-3); border-radius: 10px;
+    padding: 12px 14px;
+    border-left: 2px solid var(--hold);
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.5;
+  }
+  .panel-cta b { color: var(--ink); font-weight: 500; }
+
+  /* ============ SHEET 3 — 90 DAY PLAN ============ */
+  .plan-head {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 56px; align-items: end;
+    margin-bottom: 56px;
+  }
+  .plan-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden; background: var(--bg-1);
+  }
+  .plan-stats > div { padding: 18px 22px; border-right: 1px solid var(--line); }
+  .plan-stats > div:last-child { border-right: none; }
+  .plan-stats .k { font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .plan-stats .v { font-size: 24px; margin-top: 6px; letter-spacing: -0.02em; }
+  .plan-stats .v small { font-size: 12px; color: var(--ink-3); margin-left: 4px; font-family: "Geist Mono", monospace; }
+
+  .timeline {
+    margin-top: 16px;
+    border: 1px solid var(--line); border-radius: 18px;
+    background: var(--bg-1);
+    padding: 26px 28px 32px;
+  }
+  .tl-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+  }
+  .tl-head .t { font-family: "Geist Mono", monospace; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .tl-head .legend { display: flex; gap: 16px; font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3); }
+  .tl-head .legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; vertical-align: 1px; }
+
+  .tl-track {
+    position: relative;
+    height: 78px;
+    border-radius: 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .tl-axis {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 22px;
+    display: flex; align-items: center;
+    border-top: 1px solid var(--line);
+    background: var(--bg-1);
+  }
+  .tl-axis .tick {
+    flex: 1; text-align: center; font-family: "Geist Mono", monospace;
+    font-size: 10px; color: var(--ink-3); border-right: 1px dashed var(--line);
+  }
+  .tl-axis .tick:last-child { border-right: none; }
+  .tl-bar {
+    position: absolute; top: 14px; height: 18px;
+    border-radius: 6px;
+    display: flex; align-items: center; padding: 0 10px;
+    font-family: "Geist Mono", monospace; font-size: 10px; color: var(--ink);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .tl-bar.a { left: 0%; width: 100%; background: linear-gradient(90deg, rgba(96,165,250,.5), rgba(96,165,250,.2)); top: 14px; }
+  .tl-bar.b { left: 66.66%; width: 33.34%; background: linear-gradient(90deg, rgba(192,132,252,.55), rgba(192,132,252,.25)); top: 36px; }
+
+  .tl-milestone {
+    position: absolute; top: 0; bottom: 22px; width: 1px;
+    background: var(--ink-4);
+  }
+  .tl-milestone span {
+    position: absolute; top: -22px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-3); border: 1px solid var(--line);
+    color: var(--ink-2); padding: 2px 7px; border-radius: 4px;
+    font-family: "Geist Mono", monospace; font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .phases {
+    margin-top: 36px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  }
+  .phase {
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 22px 26px;
+    background: var(--bg-2);
+    position: relative;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .phase .ph-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .phase .ph-head .day { font-family: "Geist Mono", monospace; font-size: 11px; color: var(--ink-3); }
+  .phase .ph-head .num {
+    font-family: "Instrument Serif", serif; font-style: italic;
+    font-size: 36px; color: var(--ink-4);
+    line-height: 1;
+  }
+  .phase h4 { font-size: 19px; font-weight: 500; letter-spacing: -0.02em; margin: 0; line-height: 1.2; }
+  .phase p { font-size: 13.5px; color: var(--ink-2); margin: 0; line-height: 1.55; }
+  .phase ul { padding: 0; margin: 6px 0 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .phase ul li { font-size: 12.5px; color: var(--ink-2); display: grid; grid-template-columns: 14px 1fr; gap: 8px; line-height: 1.5; }
+  .phase ul li::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--ink-3); margin-top: 8px; }
+  .phase.live::after {
+    content: "LIVE"; position: absolute; top: 22px; right: 22px;
+    font-family: "Geist Mono", monospace; font-size: 9.5px;
+    color: var(--commit); padding: 2px 8px; border-radius: 999px;
+    background: var(--commit-bg); border: 1px solid rgba(52,211,153,0.3);
+    letter-spacing: 0.1em;
+  }
+
+  /* Measurement */
+  .meas {
+    margin-top: 72px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  }
+  .meas-card {
+    border: 1px solid var(--line); border-radius: 14px;
+    background: var(--bg-1);
+    padding: 26px 26px 22px;
+  }
+  .meas-card h3 {
+    font-size: 18px; margin: 0 0 4px; letter-spacing: -0.02em; font-weight: 500;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .meas-card .ctag {
+    font-family: "Geist Mono", monospace; font-size: 10.5px;
+    padding: 3px 8px; border-radius: 4px;
+    background: var(--bg-3); color: var(--ink-2);
+  }
+  .meas-card .ctag.b { background: rgba(192,132,252,0.15); color: var(--consult); }
+  .meas-card .ctag.a { background: rgba(96,165,250,0.15); color: var(--wait); }
+  .meas-card .sub { color: var(--ink-3); font-size: 12.5px; font-family: "Geist Mono", monospace; margin: 0; }
+  .meas-list {
+    margin-top: 18px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .meas-list .row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    padding: 12px 14px; border-radius: 10px;
+    background: var(--bg-2); border: 1px solid var(--line);
+  }
+  .meas-list .row .name { font-size: 13.5px; color: var(--ink); }
+  .meas-list .row .name small { display: block; font-size: 12px; color: var(--ink-3); margin-top: 2px; line-height: 1.4; }
+  .meas-list .row .tag {
+    font-family: "Geist Mono", monospace; font-size: 10.5px;
+    align-self: start;
+    padding: 3px 8px; border-radius: 4px;
+    background: var(--bg-3); color: var(--ink-2);
+  }
+  .meas-list .row .tag.pri { color: var(--commit); background: var(--commit-bg); }
+
+  /* Falsification */
+  .falsify {
+    margin-top: 56px;
+    border: 1px solid rgba(248,113,113,0.25);
+    background: linear-gradient(180deg, rgba(248,113,113,0.06), transparent 60%);
+    border-radius: 18px;
+    padding: 32px 34px 36px;
+  }
+  .falsify-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .falsify-head .t {
+    font-family: "Geist Mono", monospace; font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--toxic);
+  }
+  .falsify-head .meta {
+    font-family: "Geist Mono", monospace; font-size: 11px;
+    color: var(--ink-3);
+  }
+  .falsify h3 {
+    margin: 0 0 8px; font-size: 26px; letter-spacing: -0.025em; font-weight: 500;
+    line-height: 1.15;
+  }
+  .falsify h3 .serif-em { font-family: "Instrument Serif", serif; font-style: italic; font-weight: 400; }
+  .falsify .lede {
+    color: var(--ink-2); font-size: 14.5px; max-width: 720px; margin: 0 0 24px;
+    line-height: 1.6;
+  }
+  .criteria {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+  .crit {
+    border: 1px solid var(--line);
+    background: var(--bg-1);
+    border-radius: 12px;
+    padding: 18px 18px 20px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .crit .top {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .crit .num {
+    font-family: "Instrument Serif", serif; font-style: italic;
+    font-size: 28px; color: var(--ink-4);
+  }
+  .crit .op {
+    font-family: "Geist Mono", monospace; font-size: 10.5px;
+    color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .crit h4 { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.3; }
+  .crit p { margin: 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+  .crit .target {
+    margin-top: auto; padding-top: 10px; border-top: 1px dashed var(--line);
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: "Geist Mono", monospace; font-size: 11px;
+    color: var(--ink-3);
+  }
+  .crit .target b { color: var(--commit); font-weight: 500; }
+
+  .all-must {
+    margin-top: 22px;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    font-family: "Geist Mono", monospace; font-size: 11px;
+    color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 10px;
+    background: var(--bg-2); border: 1px dashed var(--line);
+    border-radius: 999px;
+  }
+  .all-must b { color: var(--ink); }
+  .all-must .x { color: var(--toxic); }
+
+  /* Commitments split */
+  .commits {
+    margin-top: 56px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 1px solid var(--line); border-radius: 18px;
+    overflow: hidden;
+    background: var(--bg-1);
+  }
+  .commits > div { padding: 28px 30px 30px; border-right: 1px solid var(--line); }
+  .commits > div:last-child { border-right: none; }
+  .commits h4 {
+    font-family: "Geist Mono", monospace; font-size: 11px;
+    color: var(--ink-3); letter-spacing: 0.12em; text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  .commits h3 { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; margin: 0 0 18px; line-height: 1.15; }
+  .commits ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
+  .commits li {
+    display: grid; grid-template-columns: 22px 1fr; gap: 10px;
+    font-size: 13.5px; color: var(--ink-2); line-height: 1.5;
+  }
+  .commits li .check { width: 18px; height: 18px; border-radius: 50%; background: var(--bg-3); color: var(--ink-2); display: grid; place-items: center; margin-top: 3px; }
+  .commits li b { color: var(--ink); font-weight: 500; }
+
+  /* Footer / CTA */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 56px 0 64px;
+    margin-top: 32px;
+  }
+  .cta {
+    display: grid; grid-template-columns: 1.4fr 1fr; gap: 56px; align-items: center;
+    padding: 0 0 24px;
+  }
+  .cta h3 {
+    font-family: "Geist", sans-serif;
+    font-size: clamp(28px, 4vw, 44px); font-weight: 500;
+    letter-spacing: -0.03em; line-height: 1.05;
+    margin: 0;
+  }
+  .cta h3 .serif-em { font-family: "Instrument Serif", serif; font-style: italic; font-weight: 400; }
+  .cta p { color: var(--ink-2); margin: 16px 0 0; font-size: 15px; line-height: 1.6; max-width: 540px; }
+  .cta-actions { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+  .cta-actions .btn-lg {
+    padding: 14px 22px; font-size: 14px;
+    text-align: center;
+  }
+  .cta-actions .meta { font-family: "Geist Mono", monospace; font-size: 11px; color: var(--ink-3); text-align: right; margin-top: 6px; }
+
+  .legal {
+    margin-top: 40px;
+    border-top: 1px solid var(--line);
+    padding-top: 22px;
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    font-family: "Geist Mono", monospace; font-size: 10.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+
+  /* Responsive */
+  @media (max-width: 1080px) {
+    .scenario { grid-template-columns: 1fr; }
+    .plan-head { grid-template-columns: 1fr; gap: 24px; }
+    .section-head { grid-template-columns: 1fr; gap: 16px; }
+    .meas { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 820px) {
+    .hero-meta { grid-template-columns: 1fr 1fr; }
+    .hero-meta > div:nth-child(2) { border-right: none; }
+    .three-col { grid-template-columns: 1fr; }
+    .gap-card { border-right: none; border-bottom: 1px solid var(--line); }
+    .gap-card:last-child { border-bottom: none; }
+    .states { grid-template-columns: repeat(2, 1fr); }
+    .kernel { grid-template-columns: 1fr; }
+    .kernel-left { border-right: none; border-bottom: 1px solid var(--line); }
+    .phases { grid-template-columns: 1fr; }
+    .criteria { grid-template-columns: 1fr; }
+    .commits { grid-template-columns: 1fr; }
+    .commits > div { border-right: none; border-bottom: 1px solid var(--line); }
+    .commits > div:last-child { border-bottom: none; }
+    .cx-grid { grid-template-columns: 1fr; }
+    .op-grid { grid-template-columns: 1fr; }
+    .op-side { border-right: none; border-bottom: 1px solid var(--line); }
+    .nav-links { display: none; }
+    .cta { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner shell">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <span>NERVA</span>
+      <small>by Starpoint LLC</small>
+    </div>
+    <nav class="nav-links">
+      <a href="#sheet-1"><span class="num">01</span> The Gap</a>
+      <a href="#sheet-2"><span class="num">02</span> Two Scenarios</a>
+      <a href="#sheet-3"><span class="num">03</span> 90-Day Plan</a>
+    </nav>
+    <div class="nav-cta">
+      <span class="pill"><span class="dot"></span> Pilot · v1.0</span>
+      <button class="btn">Request pilot</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ HERO ============ -->
+<section class="shell hero" id="top">
+  <div class="eyebrow">
+    <span class="star"></span>
+    NERVA × Agentic Shopping Assistant on AWS
+  </div>
+  <h1>
+    A <span class="serif-em">governance &amp; decision-quality</span><br>
+    layer for agentic commerce.<br>
+    <span class="muted">For retailers who refuse to deploy<br>their largest competitor's objective function.</span>
+  </h1>
+  <p class="hero-sub">
+    Amazon just commodified the AI-commerce stack. Differentiation moves up the stack — to brand,
+    to trust, to decision quality. NERVA is the layer that sits between the assistant and the
+    customer's actual interest, scoring every decision across five states: COMMIT, HOLD, WAIT, CONSULT, TOXIC.
+  </p>
+  <div class="hero-cta">
+    <button class="btn">Request 90-day pilot</button>
+    <button class="btn btn-ghost">↓ Read the proposal</button>
+  </div>
+
+  <div class="hero-meta">
+    <div>
+      <div class="k">Reference market</div>
+      <div class="v">$12B<small>incremental, 2025</small></div>
+    </div>
+    <div>
+      <div class="k">Customers reached</div>
+      <div class="v">300M<small>via Alexa for Shopping</small></div>
+    </div>
+    <div>
+      <div class="k">Conversion lift</div>
+      <div class="v">3.5×<small>conv. vs. keyword</small></div>
+    </div>
+    <div>
+      <div class="k">Pilot window</div>
+      <div class="v">90d<small>pre-committed falsification</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SHEET 1 ============ -->
+<section class="shell sheet" id="sheet-1">
+  <div class="sheet-tag">
+    <span class="num">01</span>
+    <span>Sheet 01 — The Gap &amp; The Framework</span>
+    <span class="line"></span>
+    <span>Visual Summary</span>
+  </div>
+
+  <div class="section-head">
+    <h2>
+      ASA was built to <span class="serif-em">convert</span>.<br>
+      Your business is built on something else.
+    </h2>
+    <p>
+      Three categories of decision live <em>outside</em> ASA's optimization function.
+      Each is a structural gap a retailer at sub-enterprise scale cannot fill alone —
+      and one Amazon is structurally disincentivized to close.
+    </p>
+  </div>
+
+  <div class="three-col">
+    <div class="gap-card">
+      <div class="label"><span class="ind" style="background:var(--commit)"></span>What ASA does well</div>
+      <h3>Battle-tested conversational commerce, delivered through AWS.</h3>
+      <p>Models, infra, and learnings from Amazon's own retail business — customizable to your catalog and brand voice. Real, hard to replicate, available now.</p>
+      <div class="stat"><b>300M</b> customers · <b>$12B</b> incremental annualized sales · <b>3.5×</b> session conv.</div>
+    </div>
+    <div class="gap-card">
+      <div class="label"><span class="ind" style="background:var(--hold)"></span>What it leaves uncovered</div>
+      <h3>Three decision categories ASA does not govern.</h3>
+      <p>
+        <b>Operator decisions about the AI</b> — thresholds, upsell aggression, confidence floors.
+        <b>Customer decision quality</b> — is the shopper right 90 days later?
+        <b>Brand-objective drift</b> — invisible without a governance layer.
+      </p>
+      <div class="stat">Optimized for the session. Not for the <b>180-day repeat rate</b>.</div>
+    </div>
+    <div class="gap-card">
+      <div class="label"><span class="ind" style="background:var(--toxic)"></span>Why Amazon won't fix it</div>
+      <h3>A layer that suppresses purchases is incompatible with retail incentives.</h3>
+      <p>The position is structurally available only to challenger brands — and to the infrastructure that serves them. The category will be defined by whoever ships first.</p>
+      <div class="stat">First mover defines the <b>trust narrative</b>.</div>
+    </div>
+  </div>
+
+  <!-- FRAMEWORK -->
+  <div class="framework-head">
+    <h2 style="margin:0; font-size: clamp(28px,3.6vw,42px); font-weight:500; letter-spacing:-0.025em; line-height:1.05;">
+      The NERVA <span class="serif-em">kernel</span> — five states, one brake, one lift score.
+    </h2>
+    <div class="meta">Field-tested · 90-day discipline · Published</div>
+  </div>
+
+  <div class="states">
+    <article class="state commit">
+      <div class="glyph">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="name">Commit</div>
+      <h3 class="h">Evidence sufficient. Stakes contained. Entropy low.</h3>
+      <p class="d">Proceed. The kernel doesn't slow down good decisions.</p>
+      <div class="signal"><span>Action</span><b>Ship</b></div>
+    </article>
+    <article class="state hold">
+      <div class="glyph">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+      </div>
+      <div class="name">Hold</div>
+      <h3 class="h">Evidence not yet sufficient. Specific gap defined.</h3>
+      <p class="d">Returned with the missing evidence stated. Re-score when satisfied.</p>
+      <div class="signal"><span>Action</span><b>Gather</b></div>
+    </article>
+    <article class="state wait">
+      <div class="glyph">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12h6"/><path d="M9 6v12"/><path d="M9 12h12"/></svg>
+      </div>
+      <div class="name">Wait</div>
+      <h3 class="h">Stakes &amp; evidence acceptable — timing is wrong.</h3>
+      <p class="d">Queued with a defined release condition. Price cycle, season, data window.</p>
+      <div class="signal"><span>Action</span><b>Queue</b></div>
+    </article>
+    <article class="state consult">
+      <div class="glyph">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 7h11"/><path d="M9 12h11"/><path d="M9 17h11"/><circle cx="4" cy="7" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="17" r="1.2" fill="currentColor"/></svg>
+      </div>
+      <div class="name">Consult</div>
+      <h3 class="h">Irreversible enough to require a second opinion.</h3>
+      <p class="d">Escalated above the ops team with explicit sign-off required. Default for one-way doors.</p>
+      <div class="signal"><span>Action</span><b>Escalate</b></div>
+    </article>
+    <article class="state toxic">
+      <div class="glyph">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M5.5 5.5l13 13"/></svg>
+      </div>
+      <div class="name">Toxic</div>
+      <h3 class="h">Don't proceed. Stakes exceed evidence — or the pattern itself is the problem.</h3>
+      <p class="d">Blocked with a written rationale. The rationale becomes a precedent.</p>
+      <div class="signal"><span>Action</span><b>Block</b></div>
+    </article>
+  </div>
+
+  <div class="kernel">
+    <div class="kernel-left">
+      <div style="font-family:'Geist Mono',monospace; font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:0.1em;">Inputs to the kernel</div>
+      <h3>Three signals decide which state a decision belongs to.</h3>
+      <div class="kernel-inputs">
+        <div class="input-row">
+          <div class="lab">Entropy</div>
+          <div class="bar"><i style="width:68%"></i></div>
+          <div class="val">0.68</div>
+        </div>
+        <div class="input-row">
+          <div class="lab">Stakes</div>
+          <div class="bar"><i style="width:42%"></i></div>
+          <div class="val">$340 · ret.</div>
+        </div>
+        <div class="input-row">
+          <div class="lab">Evidence</div>
+          <div class="bar"><i style="width:38%"></i></div>
+          <div class="val">3 indep.</div>
+        </div>
+      </div>
+      <p style="margin:8px 0 0; color: var(--ink-3); font-size: 13px; line-height: 1.55;">
+        Entropy measures whether the decision-maker can articulate what they want without naming a brand.
+        Stakes weight financial, reputational, and relational exposure. Evidence weight only counts
+        independent sources — a single opinion restated three times still counts as one.
+      </p>
+    </div>
+    <div class="kernel-right">
+      <h3>Governing primitives</h3>
+      <div class="one-way">
+        <div class="icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12h16"/><path d="M14 6l6 6-6 6"/></svg>
+        </div>
+        <div class="body">
+          <strong>One-Way Door brake</strong>
+          <p>Any high-stakes irreversible decision escalates to CONSULT or TOXIC by default — even when evidence weight is high.</p>
+        </div>
+      </div>
+      <div class="lift-card">
+        <div class="head">
+          <div class="t">Lift score · the pilot's core output</div>
+          <div class="v" style="font-family:'Geist Mono',monospace; font-size:13px; color:var(--ink-3); letter-spacing:0.08em; text-transform:uppercase;">To be measured</div>
+        </div>
+        <p style="margin: 12px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.55;">
+          Hit-rate of decisions that followed the kernel vs. decisions that overrode it,
+          measured across the 90-day window. <b style="color:var(--ink); font-weight:500;">No number is claimed before the pilot runs.</b>
+          Tracked openly and reported at day 90 — including, if it comes to it, a negative result. The willingness to be falsified is the product.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- INPUT → RETAIL SIGNAL MAPPING -->
+  <div class="framework-head" style="margin-top: 64px;">
+    <h2 style="margin:0; font-size: clamp(24px,3vw,34px); font-weight:500; letter-spacing:-0.025em; line-height:1.1;">
+      How the three inputs <span class="serif-em">map onto signals</span> a retailer already tracks.
+    </h2>
+    <div class="meta">Deployable alongside ASA · no new instrumentation</div>
+  </div>
+  <div class="three-col">
+    <div class="gap-card">
+      <div class="label"><span class="ind" style="background:var(--wait)"></span>Entropy →</div>
+      <h3>Customer uncertainty signals.</h3>
+      <p>Cart hesitation, repetitive or contradictory search queries, rapid category-switching within a session. The shopper cannot yet articulate what they want without naming a brand.</p>
+      <div class="stat">Already instrumented in <b>session logs</b> and <b>search telemetry</b>.</div>
+    </div>
+    <div class="gap-card">
+      <div class="label"><span class="ind" style="background:var(--hold)"></span>Stakes →</div>
+      <h3>Item value &amp; purchase finality.</h3>
+      <p>Order value, custom-order or non-returnable categories, sizing-dependent fit, and downstream commitment chains (subscriptions, large gifts, bundled items).</p>
+      <div class="stat">Already in <b>catalog metadata</b> and <b>order-flow rules</b>.</div>
+    </div>
+    <div class="gap-card">
+      <div class="label"><span class="ind" style="background:var(--commit)"></span>Evidence weight →</div>
+      <h3>Independent corroboration.</h3>
+      <p>Review density and independence, sizing/spec clarity, third-party validation, and presence of comparable purchase history for the same shopper.</p>
+      <div class="stat">Already in <b>PDP</b>, <b>review systems</b>, and <b>CDP history</b>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SHEET 2 — TWO SCENARIOS ============ -->
+<section class="shell sheet" id="sheet-2">
+  <div class="sheet-tag">
+    <span class="num">02</span>
+    <span>Sheet 02 — Two Configurations</span>
+    <span class="line"></span>
+    <span>Where NERVA layers in</span>
+  </div>
+
+  <div class="section-head">
+    <h2>
+      One kernel. <span class="serif-em">Two surfaces.</span><br>
+      Different risk profiles, different stories.
+    </h2>
+    <p>
+      Configuration A is the lowest-risk deployment — a governance layer over ASA configuration changes,
+      operator-facing only. Configuration B is the higher-narrative deployment — a decision panel surfaced
+      inside the customer's conversational session. The pilot recommends sequencing A first, then B.
+    </p>
+  </div>
+
+  <div class="tabs" id="scenario-tabs">
+    <button class="active" data-tab="a"><span class="tab-tag">CONFIG A</span> Operator governance</button>
+    <button data-tab="b"><span class="tab-tag">CONFIG B</span> Customer decision panel</button>
+  </div>
+
+  <!-- SCENARIO A -->
+  <div class="scenario" id="scenario-a">
+    <div class="scenario-side">
+      <h3>
+        Score every <span class="serif-em">config change</span><br>
+        before it ships to production.
+      </h3>
+      <p class="lede">
+        Before any change to recommendation thresholds, pricing rules, conversational flow, or upsell triggers
+        ships to ASA, the change is scored by the NERVA kernel and routed by state. COMMIT decisions flow normally.
+        Everything else gets a guardrail — not a checkpoint.
+      </p>
+      <div class="who">
+        <div>
+          <div class="k">Surface</div>
+          <div class="v">Operator dashboard. No customer-visible UI.</div>
+        </div>
+        <div>
+          <div class="k">Risk profile</div>
+          <div class="v">Lowest. Reversible at every step.</div>
+        </div>
+        <div>
+          <div class="k">Time to signal</div>
+          <div class="v">Day 30 — first directional lift read.</div>
+        </div>
+        <div>
+          <div class="k">Pilot window</div>
+          <div class="v">Full 90 days. Baseline for B.</div>
+        </div>
+      </div>
+      <ul class="features">
+        <li>
+          <span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><b>Pre-deploy review</b> — every config change scored before it ships. COMMIT auto-flows.</span>
+        </li>
+        <li>
+          <span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><b>CONSULT escalation</b> — irreversible-enough changes routed above ops with named owners.</span>
+        </li>
+        <li>
+          <span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><b>TOXIC block</b> — short-term conversion wins at the cost of return rate get stopped at source.</span>
+        </li>
+        <li>
+          <span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><b>Operator lift score</b> — hit-rate when the team follows vs. overrides. Tracked openly.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="url">asa-ops.your-brand.com/nerva/queue</div>
+        <div class="ctrls">⌘K</div>
+      </div>
+      <div class="mock-body">
+        <div class="op-grid">
+          <aside class="op-side">
+            <div class="lbl">Decision queue</div>
+            <div class="item active"><span>Upsell threshold</span><span class="badge hold">HOLD</span></div>
+            <div class="item"><span>Reco confidence</span><span class="badge com">COMM</span></div>
+            <div class="item"><span>Price rule · sale</span><span class="badge con">CONS</span></div>
+            <div class="item"><span>Flow A/B · gifting</span><span class="badge com">COMM</span></div>
+            <div class="item"><span>Aggressive cross-sell</span><span class="badge tox">TOX</span></div>
+            <div class="lbl">Today</div>
+            <div class="item"><span>Catalog re-rank</span><span class="badge com">COMM</span></div>
+            <div class="item"><span>Bundle suggest</span><span class="badge hold">HOLD</span></div>
+          </aside>
+          <div class="op-main">
+            <div class="op-title">
+              <div class="h">Upsell threshold · raise to 0.78</div>
+              <div class="ts">change_id 41A2 · proposed 12m ago</div>
+            </div>
+            <div class="state-banner">
+              <div class="glyph">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+              </div>
+              <div class="text">
+                <div class="l1">HOLD · evidence gap defined</div>
+                <div class="l2">Two more weeks of return-rate data needed at current threshold before raising.</div>
+              </div>
+            </div>
+            <div class="metric-grid">
+              <div class="cell">
+                <div class="k">Entropy</div>
+                <div class="v">0.62<span>/ 1.0</span></div>
+                <div class="bar"><i class="hold" style="width:62%"></i></div>
+              </div>
+              <div class="cell">
+                <div class="k">Stakes</div>
+                <div class="v">High<span>· reversible</span></div>
+                <div class="bar"><i class="hold" style="width:70%"></i></div>
+              </div>
+              <div class="cell">
+                <div class="k">Evidence</div>
+                <div class="v">2<span>indep. sources</span></div>
+                <div class="bar"><i style="width:40%"></i></div>
+              </div>
+            </div>
+            <div class="gap-callout">
+              <b>Gap to clear:</b> Current 30-day return-rate signal at threshold 0.71 is below 21-day stability minimum. Re-score when window completes <b>(est. Jun 14)</b>.
+            </div>
+            <div class="actions">
+              <button class="primary">Queue with release condition</button>
+              <button>Override → ship anyway</button>
+              <button class="danger">Mark TOXIC</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENARIO B (hidden by default) -->
+  <div class="scenario" id="scenario-b" style="display:none">
+    <div class="scenario-side">
+      <h3>
+        Surface decision <span class="serif-em">quality</span><br>
+        inside the customer's session.
+      </h3>
+      <p class="lede">
+        The shopper sees a NERVA reading alongside the AI's recommendation: state, evidence weight,
+        entropy, stakes, and a one-line suggestion. They can act on it or ignore it.
+        Some won't return. The ones who do come back better — and more often.
+      </p>
+      <div class="who">
+        <div>
+          <div class="k">Surface</div>
+          <div class="v">Inside the conversational session.</div>
+        </div>
+        <div>
+          <div class="k">Risk profile</div>
+          <div class="v">Higher. Higher narrative payoff.</div>
+        </div>
+        <div>
+          <div class="k">Primary metrics</div>
+          <div class="v">Return rate + CMS <span style="color:var(--ink-3); font-family:'Geist Mono',monospace; font-size:11px;">(co-primary)</span></div>
+        </div>
+        <div>
+          <div class="k">Rollout</div>
+          <div class="v">Single category, final 30 days only.</div>
+        </div>
+      </div>
+      <ul class="features">
+        <li>
+          <span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><b>State + signals</b> in plain language. "Not recommended" reads better than TOXIC in retail.</span>
+        </li>
+        <li>
+          <span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><b>Customer lift score</b> — of pauses NERVA suggested, what fraction did <em>not</em> return-to-buy in 14 days?</span>
+        </li>
+        <li>
+          <span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><b>Personal dashboard</b> — entropy patterns by category, decision history, 90-day satisfaction.</span>
+        </li>
+        <li>
+          <span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><b>Positioning weapon</b> — the AI doesn't just sell. It helps the shopper decide whether to buy.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="url">shop.your-brand.com/assistant</div>
+        <div class="ctrls">⌘K</div>
+      </div>
+      <div class="mock-body">
+        <div class="cx-grid">
+          <div class="chat">
+            <div class="chat-head">
+              <div class="avatar">A</div>
+              <div>
+                <div class="name">Assistant</div>
+                <div class="sub">Powered by ASA · governed by NERVA</div>
+              </div>
+              <div class="right">14:32</div>
+            </div>
+            <div class="msgs">
+              <div class="msg them">
+                <div class="pname">Assistant</div>
+                Hi — what are we shopping for today?
+              </div>
+              <div class="msg you">
+                <div class="pname">You</div>
+                Something nice for my partner — they like minimalist stuff, under $400. Birthday is Sunday.
+              </div>
+              <div class="msg them">
+                <div class="pname">Assistant</div>
+                Got it. A few directions stand out. Want me to narrow by what they'd actually use, or by what reads "thoughtful gift" first?
+                <div class="product-row">
+                  <div class="img">A</div>
+                  <div>
+                    <div class="pn">Brushed steel desk light</div>
+                    <div class="pm">Articulated · warm 2700K</div>
+                  </div>
+                  <div class="price">$285</div>
+                </div>
+                <div class="product-row">
+                  <div class="img">B</div>
+                  <div>
+                    <div class="pn">Linen weekender bag</div>
+                    <div class="pm">Indigo · leather handles</div>
+                  </div>
+                  <div class="price">$340</div>
+                </div>
+              </div>
+              <div class="msg you">
+                <div class="pname">You</div>
+                I keep flipping between them. Maybe the bag.
+              </div>
+            </div>
+            <div class="chat-input">
+              <div class="field">Tell me more about what they'd actually use…</div>
+              <div class="send">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <aside class="nerva-panel">
+            <div class="panel-head">
+              <div class="t">NERVA · Decision quality</div>
+              <div class="by">governed</div>
+            </div>
+            <div class="panel-state">
+              <div class="ring">
+                <div class="v">HOLD</div>
+              </div>
+              <div class="label">Take a beat</div>
+              <div class="sub">entropy is high · stakes are real</div>
+            </div>
+            <div class="panel-meta">
+              <div class="panel-row">
+                <span class="k">Evidence</span>
+                <div class="bar"><i class="lo" style="width:42%"></i></div>
+                <span class="v">moderate</span>
+              </div>
+              <div class="panel-row">
+                <span class="k">Entropy</span>
+                <div class="bar"><i class="hi" style="width:78%"></i></div>
+                <span class="v">high</span>
+              </div>
+              <div class="panel-row">
+                <span class="k">Stakes</span>
+                <div class="bar"><i style="width:55%"></i></div>
+                <span class="v">$340 · ret.</span>
+              </div>
+              <div class="panel-row">
+                <span class="k">Returnable</span>
+                <div class="bar"><i class="lo" style="width:100%"></i></div>
+                <span class="v">30 days</span>
+              </div>
+            </div>
+            <div class="panel-cta">
+              You've looked at <b>4 categories in 20 minutes</b>. Try answering one question before continuing:
+              <b>what's the problem this gift is solving?</b>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SHEET 3 — 90-DAY PLAN ============ -->
+<section class="shell sheet" id="sheet-3">
+  <div class="sheet-tag">
+    <span class="num">03</span>
+    <span>Sheet 03 — 90-Day Pilot</span>
+    <span class="line"></span>
+    <span>Designed to be falsifiable</span>
+  </div>
+
+  <div class="plan-head">
+    <h2 style="font-family:'Geist',sans-serif; font-size:clamp(32px,4.2vw,52px); font-weight:500; letter-spacing:-0.03em; line-height:1.02; margin:0;">
+      A pilot designed to <span class="serif-em">end cleanly</span><br>
+      if it doesn't work.
+    </h2>
+    <div class="plan-stats">
+      <div>
+        <div class="k">Duration</div>
+        <div class="v">90<small>days</small></div>
+      </div>
+      <div>
+        <div class="k">Configs</div>
+        <div class="v">A → B<small>sequenced</small></div>
+      </div>
+      <div>
+        <div class="k">Reviews</div>
+        <div class="v">Weekly<small>+ day-45 midpoint</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-head">
+      <div class="t">Pilot timeline</div>
+      <div class="legend">
+        <span><i style="background:rgba(96,165,250,0.6)"></i>Config A · operator governance</span>
+        <span><i style="background:rgba(192,132,252,0.6)"></i>Config B · customer panel</span>
+      </div>
+    </div>
+    <div class="tl-track">
+      <div class="tl-milestone" style="left: 33.33%"><span>Day 30 · first lift read</span></div>
+      <div class="tl-milestone" style="left: 50%"><span>Day 45 · midpoint</span></div>
+      <div class="tl-milestone" style="left: 66.66%"><span>Day 60 · Config B live</span></div>
+      <div class="tl-bar a">Config A</div>
+      <div class="tl-bar b">Config B</div>
+      <div class="tl-axis">
+        <div class="tick">Day 0</div>
+        <div class="tick">15</div>
+        <div class="tick">30</div>
+        <div class="tick">45</div>
+        <div class="tick">60</div>
+        <div class="tick">75</div>
+        <div class="tick">90</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="phases">
+    <div class="phase live">
+      <div class="ph-head">
+        <div class="day">Day 0 → 45</div>
+        <div class="num">01</div>
+      </div>
+      <h4>Operator layer goes live.</h4>
+      <p>Configuration A deploys against a single category or workflow. NERVA scores every ASA config change before it ships.</p>
+      <ul>
+        <li>Single pilot category named</li>
+        <li>Decision owner empowered for CONSULT</li>
+        <li>Read access to config + return data</li>
+        <li>Weekly read-outs begin day 7</li>
+      </ul>
+    </div>
+    <div class="phase">
+      <div class="ph-head">
+        <div class="day">Day 45</div>
+        <div class="num">02</div>
+      </div>
+      <h4>Midpoint review.</h4>
+      <p>Operator lift score, deployment regret rate, and CONSULT/TOXIC precision reviewed against pre-committed targets.</p>
+      <ul>
+        <li>Adopt · Extend · End — decided here</li>
+        <li>Go/no-go on Config B rollout</li>
+        <li>Falsification criteria re-affirmed</li>
+        <li>Sample-size honesty report</li>
+      </ul>
+    </div>
+    <div class="phase">
+      <div class="ph-head">
+        <div class="day">Day 60 → 90</div>
+        <div class="num">03</div>
+      </div>
+      <h4>Customer panel goes live.</h4>
+      <p>Configuration B deploys on a single category or shopper segment. Return rate at 30/60/90 days is the primary metric.</p>
+      <ul>
+        <li>Single category in scope</li>
+        <li>Conversion tracked, not optimized</li>
+        <li>Customer lift score visible</li>
+        <li>Day-90 report with explicit recommendation</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Measurement -->
+  <div class="meas">
+    <div class="meas-card">
+      <h3>Configuration A metrics <span class="ctag a">OPERATOR</span></h3>
+      <p class="sub">measured vs. matched control period</p>
+      <div class="meas-list">
+        <div class="row">
+          <div class="name">Deployment regret rate <small>changes rolled back within 30 days</small></div>
+          <div class="tag pri">PRIMARY</div>
+        </div>
+        <div class="row">
+          <div class="name">Operator lift score <small>follow-NERVA hit-rate vs. override</small></div>
+          <div class="tag">CORE</div>
+        </div>
+        <div class="row">
+          <div class="name">Decision velocity <small>proposal → deploy time, by state</small></div>
+          <div class="tag">CORE</div>
+        </div>
+        <div class="row">
+          <div class="name">CONSULT signal precision <small>% materially changed by reviewer</small></div>
+          <div class="tag">QUALITY</div>
+        </div>
+        <div class="row">
+          <div class="name">TOXIC signal precision <small>% subsequently judged correct to block</small></div>
+          <div class="tag">QUALITY</div>
+        </div>
+      </div>
+    </div>
+    <div class="meas-card">
+      <h3>Configuration B metrics <span class="ctag b">CUSTOMER</span></h3>
+      <p class="sub">measured vs. concurrent control segment</p>
+      <div class="meas-list">
+        <div class="row">
+          <div class="name">Return rate · 30/60/90d <small>NERVA-panel-visible vs. control</small></div>
+          <div class="tag pri">PRIMARY</div>
+        </div>
+        <div class="row">
+          <div class="name">Contribution Margin per Session (CMS) <small>per-session net profitability after returns, refunds, and direct acquisition cost — co-primary with return rate</small></div>
+          <div class="tag pri">PRIMARY</div>
+        </div>
+        <div class="row">
+          <div class="name">Repeat purchase rate <small>same-customer return within 180 days</small></div>
+          <div class="tag">CORE</div>
+        </div>
+        <div class="row">
+          <div class="name">Session conversion <small>tracked, not optimized for — judged against CMS, not against conversion alone. A slight dip in absolute conversion is expected and intended.</small></div>
+          <div class="tag">GUARDRAIL</div>
+        </div>
+        <div class="row">
+          <div class="name">Post-purchase sentiment <small>NPS-equivalent at 7 and 30 days</small></div>
+          <div class="tag">CORE</div>
+        </div>
+        <div class="row">
+          <div class="name">Customer lift score <small>% of NERVA pauses that did not become purchases</small></div>
+          <div class="tag">QUALITY</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Falsification -->
+  <div class="falsify">
+    <div class="falsify-head">
+      <div class="t">Falsification · pre-committed</div>
+      <div class="meta">All three must hold at day 90</div>
+    </div>
+    <h3>The pilot is judged successful only if <span class="serif-em">all three</span> of the following are true.</h3>
+    <p class="lede">
+      No retroactive metric changes. If these conditions are not met, the layer is not adopted —
+      and the pilot ends cleanly. The willingness to be wrong is the product.
+    </p>
+    <div class="criteria">
+      <article class="crit">
+        <div class="top"><div class="op">Criterion 01</div><div class="num">01</div></div>
+        <h4>Operator lift score is positive and statistically meaningful for the sample.</h4>
+        <p>Decisions that followed NERVA outperform decisions that overrode it. Effect size honestly stated against sample size; no claim of significance the data can't support.</p>
+        <div class="target"><span>Threshold</span><b>&gt; 0 · significant</b></div>
+      </article>
+      <article class="crit">
+        <div class="top"><div class="op">Criterion 02</div><div class="num">02</div></div>
+        <h4>Deployment regret rate drops at least 20% vs. matched control period.</h4>
+        <p>Of changes shipped under NERVA, materially fewer get rolled back within 30 days than were rolled back in the equivalent prior window.</p>
+        <div class="target"><span>Threshold</span><b>≥ −20% regret</b></div>
+      </article>
+      <article class="crit">
+        <div class="top"><div class="op">Criterion 03</div><div class="num">03</div></div>
+        <h4>Config B reduces return rate with only a single-digit dip in session conversion.</h4>
+        <p>The customer panel can suppress some sessions — that's intended. But total revenue net of returns must improve, not collapse. Single-digit conversion dip is the ceiling.</p>
+        <div class="target"><span>Threshold</span><b>Returns ↓ · Conv. dip &lt; 10%</b></div>
+      </article>
+    </div>
+    <div class="all-must">
+      <span>Logic</span>
+      <b>Criterion 01</b> <span class="x">AND</span>
+      <b>Criterion 02</b> <span class="x">AND</span>
+      <b>Criterion 03</b>
+      <span>=</span> <b>Adopt</b>
+    </div>
+  </div>
+
+  <!-- Commitments -->
+  <div class="commits">
+    <div>
+      <h4>Retailer commits to</h4>
+      <h3>Scope, access, and the integrity of the test.</h3>
+      <ul>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span>One <b>single named category</b>, segment, or workflow as pilot scope.</span></li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span>Read access to <b>config logs, return data</b>, and session data (Config B) under standard DPA.</span></li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span>A <b>named decision owner</b> empowered to act on CONSULT escalations.</span></li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span>Falsification criteria accepted <b>before</b> pilot kickoff — no retroactive changes.</span></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Starpoint commits to</h4>
+      <h3>Deployment, transparency, and an honest day-90 report.</h3>
+      <ul>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span>Deploy NERVA as a service <b>alongside</b> ASA. No replacement of underlying stack.</span></li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><b>Weekly read-outs</b>, midpoint at day 45, full report at day 90.</span></li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span>Framework held <b>neutral</b> — no affiliate or partnership revenue inside the pilot.</span></li>
+        <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span>Explicit <b>recommendation</b> at day 90: adopt, extend, or end. No upselling on a failed pilot.</span></li>
+      </ul>
+    </div>
+  </div>
+
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="shell">
+    <div class="cta">
+      <div>
+        <h3>
+          Three milestones. <span class="serif-em">Three to six weeks</span><br>
+          before kickoff.
+        </h3>
+        <p>
+          A 60-minute discovery call. A fixed-scope, fixed-cost scoping memo within a week.
+          Pilot live within 30 days of signed memo. The category, the owner, and the criteria
+          are named before any code ships.
+        </p>
+      </div>
+      <div class="cta-actions">
+        <button class="btn btn-lg">Request a discovery call →</button>
+        <button class="btn btn-ghost btn-lg">Download the full proposal (.docx)</button>
+        <div class="meta"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="63000c0d170200172310170211130c0a0d174d0f0f00">[email&#160;protected]</a> · v1.0 · May 2026</div>
+      </div>
+    </div>
+
+    <div class="legal">
+      <div>STARPOINT LLC · NERVA DECISION LAYER FOR AGENTIC COMMERCE</div>
+      <div>NOT ENDORSED BY OR AFFILIATED WITH AMAZON OR AWS</div>
+      <div>PROPOSAL · V1.0 · 2026</div>
+    </div>
+  </div>
+</footer>
+
+</main>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  // Smooth scroll for nav
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', (e) => {
+      const id = a.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      if (el) { e.preventDefault(); window.scrollTo({top: el.offsetTop - 60, behavior: 'smooth'}); }
+    });
+  });
+
+  // Scenario tabs
+  const tabBtns = document.querySelectorAll('#scenario-tabs button');
+  const scA = document.getElementById('scenario-a');
+  const scB = document.getElementById('scenario-b');
+  tabBtns.forEach(b => {
+    b.addEventListener('click', () => {
+      tabBtns.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      const t = b.dataset.tab;
+      scA.style.display = (t === 'a') ? '' : 'none';
+      scB.style.display = (t === 'b') ? '' : 'none';
+    });
+  });
+</script>
+</body>
+</html>
